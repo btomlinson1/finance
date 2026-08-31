@@ -1,0 +1,23 @@
+{
+  "cells": [
+    {
+      "cell_type": "code",
+      "metadata": {
+        "language": "python"
+      },
+      "source": [
+        "# Demo: Plot monthly trend and forecast using insights_helpers\n",
+        "from insights_helpers import plot_monthly_trend, forecast_monthly, plot_forecast, query_insights\n",
+        "\n",
+        "# Plot the historical monthly trend\n",
+        "plot_monthly_trend(df, date_col=date_col, amount_col='Amount', title='Historical Monthly Spend')\n",
+        "\n",
+        "# Forecast next 6 months and plot\n",
+        "f = forecast_monthly(df, date_col=date_col, amount_col='Amount', periods=6)\n",
+        "print('Forecast:')\n",
+        "print(f)\n",
+        "plot_forecast(f, title='6-Month Linear Forecast')\n"
+      ]
+    }
+  ]
+}
