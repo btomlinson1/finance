@@ -748,9 +748,15 @@ elif st.session_state.current_page == "forecasting":
         st.divider()
         st.markdown("### 5-Year Summary")
         
-        # Sum income and expenses across 60 months
-        total_income_5yr = sum(pl_data["Income"])
-        total_expenses_5yr = sum([sum(pl_data[cat]) for cat in all_categories])
+        # Sum income and expenses across all months in the window
+        total_income_window = sum(pl_data["Income"])
+        total_expenses_window = sum([sum(pl_data[cat]) for cat in all_categories])
+        total_savings_window = total_income_window - total_expenses_window
+        
+        # Calculate 5-year (60 month) averages
+        months_count = len(months_list)
+        total_income_5yr = (total_income_window / months_count) * 60
+        total_expenses_5yr = (total_expenses_window / months_count) * 60
         total_savings = total_income_5yr - total_expenses_5yr
         avg_monthly_savings = total_savings / 60 if total_savings > 0 else 0
         avg_savings_rate = (total_savings / total_income_5yr) if total_income_5yr > 0 else 0
@@ -895,8 +901,9 @@ elif st.session_state.current_page == "forecasting":
         st.divider()
         st.markdown("### FIRE Projections")
         
-        avg_monthly_expense = total_expenses_5yr / 60
-        fire_number = avg_monthly_expense * 12 / 0.04  # 4% safe withdrawal rate
+        # Use 5-year expense total to calculate FIRE number
+        annual_expenses = total_expenses_5yr / 5
+        fire_number = annual_expenses / 0.04  # 4% safe withdrawal rate
         st.markdown(f"**FIRE number (4% SWR):** ${fire_number:,.0f}")
         st.markdown(f"**Current net worth:** ${current_net_worth:,.0f}")
         
