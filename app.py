@@ -620,6 +620,94 @@ elif st.session_state.current_page == "forecasting":
         with col4:
             st.metric("Avg monthly savings", f"${avg_monthly_savings:,.0f}")
         
+        # Net worth and asset tracking
+        st.divider()
+        st.markdown("### Net Worth & Assets")
+        
+        assets_col, debts_col = st.columns(2)
+        
+        with assets_col:
+            st.markdown("**Assets**")
+            asset_401k = st.number_input("401k ($)", value=0, step=1000, key="asset_401k")
+            asset_cash = st.number_input("Cash/Bank Savings ($)", value=0, step=1000, key="asset_cash")
+            asset_ira = st.number_input("IRA ($)", value=0, step=1000, key="asset_ira")
+            asset_brokerage = st.number_input("Brokerage ($)", value=0, step=1000, key="asset_brokerage")
+            asset_crypto = st.number_input("Crypto ($)", value=0, step=1000, key="asset_crypto")
+            asset_fidelity_go = st.number_input("Fidelity Go ($)", value=0, step=1000, key="asset_fidelity_go")
+            asset_fidfolios = st.number_input("Fidfolios ($)", value=0, step=1000, key="asset_fidfolios")
+            asset_hsa = st.number_input("HSA ($)", value=0, step=1000, key="asset_hsa")
+            asset_fhrp = st.number_input("FHRP ($)", value=0, step=1000, key="asset_fhrp")
+            
+            total_assets = (asset_401k + asset_cash + asset_ira + asset_brokerage + 
+                          asset_crypto + asset_fidelity_go + asset_fidfolios + asset_hsa + asset_fhrp)
+        
+        with debts_col:
+            st.markdown("**Debts**")
+            debt_house = st.number_input("House ($)", value=0, step=1000, key="debt_house")
+            debt_car = st.number_input("Car ($)", value=0, step=1000, key="debt_car")
+            debt_student = st.number_input("Student Debt ($)", value=0, step=1000, key="debt_student")
+            debt_other = st.number_input("Other ($)", value=0, step=1000, key="debt_other")
+            
+            total_debts = debt_house + debt_car + debt_student + debt_other
+        
+        current_net_worth = total_assets - total_debts
+        
+        st.markdown(f"**Current Net Worth: ${current_net_worth:,.0f}**")
+        st.markdown(f"Total Assets: ${total_assets:,.0f} | Total Debts: ${total_debts:,.0f}")
+        
+        # Market growth assumption
+        st.divider()
+        st.markdown("### Growth Assumptions")
+        market_growth_rate = st.slider(
+            "Forecasted annual market growth (%)",
+            min_value=0.0,
+            max_value=15.0,
+            value=7.0,
+            step=0.5,
+            key="market_growth_slider"
+        ) / 100.0
+        
+        # Project net worth over 5 years
+        st.markdown("### Projected Net Worth")
+        projected_nw_data = {}
+        current_nw = current_net_worth
+        
+        for year_offset in range(6):
+            year = base_month.year + year_offset
+            year_label = str(year)
+            
+            if year_offset == 0:
+                # Current year: use actual assets
+                projected_nw_data[year_label] = current_nw
+            else:
+                # Project forward: add accumulated savings and apply market growth
+                years_accumulated = year_offset
+                annual_savings_amount = avg_monthly_savings * 12
+                accumulated_savings = annual_savings_amount * years_accumulated
+                
+                # Apply market growth only to invested assets (exclude cash)
+                invested_portion = total_assets - asset_cash
+                growth_multiplier = (1 + market_growth_rate) ** years_accumulated
+                grown_invested = invested_portion * growth_multiplier
+                
+                # Recalculate with growth
+                projected_assets = (asset_cash + accumulated_savings) + grown_invested
+                projected_debts = total_debts * (0.95 ** years_accumulated)  # Assume 5% annual debt reduction
+                projected_nw = projected_assets - projected_debts
+                projected_nw_data[year_label] = projected_nw
+        
+        # Display projected net worth as a simple chart
+        nw_df = pd.DataFrame(list(projected_nw_data.items()), columns=["Year", "Net Worth"])
+        nw_df["Net Worth"] = nw_df["Net Worth"].astype(float)
+        st.line_chart(nw_df.set_index("Year"))
+        
+        # Show net worth projections in table format
+        nw_rows = []
+        for year_label, nw_value in projected_nw_data.items():
+            nw_rows.append({"Year": year_label, "Net Worth": f"${nw_value:,.0f}"})
+        nw_projection_df = pd.DataFrame(nw_rows)
+        st.dataframe(nw_projection_df, use_container_width=True)
+        
         # FIRE calculation
         st.divider()
         st.markdown("### FIRE Projections")
