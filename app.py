@@ -456,25 +456,67 @@ elif st.session_state.current_page == "forecasting":
     # Load saved assumptions if they exist
     saved_assumptions = load_assumptions()
     
-    # Input fields for assumptions
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        annual_pretax_income = st.number_input(
-            "Annual pre-tax income ($)",
-            value=saved_assumptions.get("annual_pretax_income", 80000) if saved_assumptions else 80000,
+    # Income components
+    st.markdown("**Income Components**")
+    income_col1, income_col2, income_col3 = st.columns(3)
+    with income_col1:
+        annual_salary = st.number_input(
+            "Annual salary ($)",
+            value=saved_assumptions.get("annual_salary", 120000) if saved_assumptions else 120000,
             step=5000,
-            key="annual_income_input"
+            key="annual_salary_input"
         )
-        monthly_pretax_income = annual_pretax_income / 12
-    with col2:
-        annual_deductions = st.number_input(
-            "Annual deductions ($)",
-            value=saved_assumptions.get("annual_deductions", 8000) if saved_assumptions else 8000,
-            step=500,
-            key="annual_deduction_input"
+    with income_col2:
+        annual_bonus = st.number_input(
+            "Annual bonus ($)",
+            value=saved_assumptions.get("annual_bonus", 20000) if saved_assumptions else 20000,
+            step=5000,
+            key="annual_bonus_input"
         )
-        monthly_deductions = annual_deductions / 12
-    with col3:
+    with income_col3:
+        annual_stock = st.number_input(
+            "Annual stock/RSU ($)",
+            value=saved_assumptions.get("annual_stock", 15000) if saved_assumptions else 15000,
+            step=5000,
+            key="annual_stock_input"
+        )
+    
+    total_annual_pretax = annual_salary + annual_bonus + annual_stock
+    
+    # Deductions as percentages
+    st.markdown("**Deductions & Contributions**")
+    deduction_col1, deduction_col2, deduction_col3, deduction_col4 = st.columns(4)
+    with deduction_col1:
+        contribution_401k_pct = st.slider(
+            "401k contribution % of compensation",
+            min_value=0.0,
+            max_value=25.0,
+            value=saved_assumptions.get("contribution_401k_pct", 10.0) if saved_assumptions else 10.0,
+            step=0.5,
+            key="contribution_401k_slider"
+        ) / 100.0
+    
+    with deduction_col2:
+        fidelity_match_pct = st.slider(
+            "Fidelity match % (you mentioned 17%)",
+            min_value=0.0,
+            max_value=25.0,
+            value=saved_assumptions.get("fidelity_match_pct", 17.0) if saved_assumptions else 17.0,
+            step=0.5,
+            key="fidelity_match_slider"
+        ) / 100.0
+    
+    with deduction_col3:
+        other_deductions_pct = st.slider(
+            "Other deductions % of compensation",
+            min_value=0.0,
+            max_value=10.0,
+            value=saved_assumptions.get("other_deductions_pct", 2.0) if saved_assumptions else 2.0,
+            step=0.5,
+            key="other_deductions_slider"
+        ) / 100.0
+    
+    with deduction_col4:
         tax_rate = st.slider(
             "Effective tax rate (%)",
             min_value=0.0,
@@ -483,6 +525,32 @@ elif st.session_state.current_page == "forecasting":
             step=0.5,
             key="tax_rate_slider"
         ) / 100.0
+    
+    # Calculate actual deductions
+    annual_401k_contrib = total_annual_pretax * contribution_401k_pct
+    annual_fidelity_match = total_annual_pretax * fidelity_match_pct
+    annual_other_deductions = total_annual_pretax * other_deductions_pct
+    annual_taxes = (total_annual_pretax - annual_401k_contrib - annual_other_deductions) * tax_rate
+    
+    annual_pretax_income = total_annual_pretax
+    annual_deductions = annual_401k_contrib + annual_other_deductions
+    
+    # Display summary
+    st.markdown("**Income Summary**")
+    summary_col1, summary_col2, summary_col3, summary_col4 = st.columns(4)
+    with summary_col1:
+        st.metric("Total pre-tax income", f"${total_annual_pretax:,.0f}")
+    with summary_col2:
+        st.metric("401k contribution", f"${annual_401k_contrib:,.0f}")
+    with summary_col3:
+        st.metric("Taxes", f"${annual_taxes:,.0f}")
+    with summary_col4:
+        st.metric("Annual after-tax", f"${total_annual_pretax - annual_401k_contrib - annual_taxes:,.0f}")
+    
+    st.caption(f"Fidelity match (benefit): ${annual_fidelity_match:,.0f}")
+    
+    monthly_pretax_income = annual_pretax_income / 12
+    monthly_deductions = annual_deductions / 12
     
     # Save/Load buttons
     button_col1, button_col2, button_col3 = st.columns(3)
@@ -495,8 +563,12 @@ elif st.session_state.current_page == "forecasting":
             
             # Update with financial assumptions
             existing.update({
-                "annual_pretax_income": annual_pretax_income,
-                "annual_deductions": annual_deductions,
+                "annual_salary": annual_salary,
+                "annual_bonus": annual_bonus,
+                "annual_stock": annual_stock,
+                "contribution_401k_pct": contribution_401k_pct,
+                "fidelity_match_pct": fidelity_match_pct,
+                "other_deductions_pct": other_deductions_pct,
                 "tax_rate": tax_rate,
             })
             if save_assumptions(existing):
@@ -507,8 +579,12 @@ elif st.session_state.current_page == "forecasting":
             # Load existing net worth data to preserve it
             existing = load_assumptions()
             assumptions = {
-                "annual_pretax_income": 80000,
-                "annual_deductions": 8000,
+                "annual_salary": 120000,
+                "annual_bonus": 20000,
+                "annual_stock": 15000,
+                "contribution_401k_pct": 0.10,
+                "fidelity_match_pct": 0.17,
+                "other_deductions_pct": 0.02,
                 "tax_rate": 0.25,
             }
             # Preserve net worth data if it exists
