@@ -646,7 +646,7 @@ elif st.session_state.current_page == "forecasting":
         forecast_display_df = pd.DataFrame(forecast_df_dict)
         
         # Display forecast
-        st.dataframe(forecast_display_df.applymap(lambda x: f"${x:,.0f}" if isinstance(x, (int, float)) else x), use_container_width=True, height=600)
+        st.dataframe(forecast_display_df.map(lambda x: f"${x:,.0f}" if isinstance(x, (int, float)) else x), use_container_width=True, height=600)
         
         # Calculate 5-year summary from forecast data
         st.divider()
