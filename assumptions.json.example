@@ -1,0 +1,19 @@
+{
+  "annual_pretax_income": 80000,
+  "annual_deductions": 8000,
+  "tax_rate": 0.25,
+  "market_growth_rate": 0.07,
+  "asset_401k": 50000,
+  "asset_cash": 10000,
+  "asset_ira": 35000,
+  "asset_brokerage": 25000,
+  "asset_crypto": 0,
+  "asset_fidelity_go": 0,
+  "asset_fidfolios": 0,
+  "asset_hsa": 5000,
+  "asset_fhrp": 0,
+  "debt_house": 200000,
+  "debt_car": 25000,
+  "debt_student": 15000,
+  "debt_other": 0
+}
