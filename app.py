@@ -640,12 +640,11 @@ elif st.session_state.current_page == "forecasting":
         pl_data = {}
         
         # Income row (constant across months)
+        # After-tax income = gross - 401k - taxes (RSUs not subject to 401k/match)
+        monthly_after_tax = (annual_pretax_income - annual_401k_contrib - annual_taxes) / 12
         pl_data["Income"] = []
         for _ in months_list:
-            taxable = monthly_pretax_income - monthly_deductions
-            taxes = max(0, taxable * tax_rate)
-            after_tax = monthly_pretax_income - taxes
-            pl_data["Income"].append(after_tax)
+            pl_data["Income"].append(monthly_after_tax)
         
         # Expense categories - get from actual data
         all_categories = sorted(visible[visible["type"] == "regular"]["category"].unique().tolist())
@@ -849,6 +848,9 @@ elif st.session_state.current_page == "forecasting":
         projected_nw_data = {}
         current_nw = current_net_worth
         
+        # Annual contributions to retirement accounts
+        annual_401k_and_match = annual_401k_contrib + annual_fidelity_match
+        
         for year_offset in range(6):
             year = base_month.year + year_offset
             year_label = str(year)
@@ -862,13 +864,17 @@ elif st.session_state.current_page == "forecasting":
                 annual_savings_amount = avg_monthly_savings * 12
                 accumulated_savings = annual_savings_amount * years_accumulated
                 
+                # Add 401k contributions and match accumulation
+                accumulated_401k_match = annual_401k_and_match * years_accumulated
+                
                 # Apply market growth only to invested assets (exclude cash)
-                invested_portion = total_assets - asset_cash
+                # Include both regular savings and 401k/match in the invested portion
+                invested_portion = (total_assets - asset_cash) + accumulated_savings + accumulated_401k_match
                 growth_multiplier = (1 + market_growth_rate) ** years_accumulated
                 grown_invested = invested_portion * growth_multiplier
                 
                 # Recalculate with growth
-                projected_assets = (asset_cash + accumulated_savings) + grown_invested
+                projected_assets = asset_cash + grown_invested
                 projected_debts = total_debts * (0.95 ** years_accumulated)  # Assume 5% annual debt reduction
                 projected_nw = projected_assets - projected_debts
                 projected_nw_data[year_label] = projected_nw
