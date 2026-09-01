@@ -898,11 +898,47 @@ elif st.session_state.current_page == "forecasting":
         avg_monthly_expense = total_expenses_5yr / 60
         fire_number = avg_monthly_expense * 12 / 0.04  # 4% safe withdrawal rate
         st.markdown(f"**FIRE number (4% SWR):** ${fire_number:,.0f}")
+        st.markdown(f"**Current net worth:** ${current_net_worth:,.0f}")
         
         if avg_monthly_savings > 0:
-            years_to_fire = fire_number / (avg_monthly_savings * 12)
-            st.markdown(f"**Years to FIRE (at forecast rate):** {years_to_fire:.1f} years")
-            fire_date = base_month.year + int(years_to_fire) + 1
-            st.markdown(f"**Potential FIRE year:** ~{fire_date}")
+            # Amount needed = FIRE number - current net worth (already have some!)
+            # Account for market growth on existing assets
+            amount_remaining = max(0, fire_number - current_net_worth)
+            
+            if amount_remaining <= 0:
+                st.success("🎉 You've already reached your FIRE number!")
+            else:
+                # Years to FIRE accounting for growth on both existing assets and new savings
+                # This is more accurate than simple calculation
+                annual_savings = avg_monthly_savings * 12
+                
+                # Simple calculation: (amount_remaining) / annual_savings
+                # But current assets also grow, so it's faster
+                # More accurate: find year where projected_nw >= fire_number
+                years_to_fire = None
+                for year_offset in range(1, 100):  # Check up to 100 years
+                    # Use the projected net worth calculation logic
+                    years_accumulated = year_offset
+                    accumulated_savings = annual_savings * years_accumulated
+                    accumulated_401k_match = annual_401k_and_match * years_accumulated
+                    
+                    invested_portion = (total_assets - asset_cash) + accumulated_savings + accumulated_401k_match
+                    growth_multiplier = (1 + market_growth_rate) ** years_accumulated
+                    grown_invested = invested_portion * growth_multiplier
+                    projected_assets = asset_cash + grown_invested
+                    projected_debts = total_debts * (0.95 ** years_accumulated)
+                    projected_nw = projected_assets - projected_debts
+                    
+                    if projected_nw >= fire_number:
+                        years_to_fire = year_offset
+                        break
+                
+                if years_to_fire:
+                    st.markdown(f"**Amount needed to reach FIRE:** ${amount_remaining:,.0f}")
+                    st.markdown(f"**Years to FIRE (accounting for growth):** {years_to_fire:.1f} years")
+                    fire_date = base_month.year + years_to_fire
+                    st.markdown(f"**Potential FIRE year:** ~{fire_date}")
+                else:
+                    st.warning("FIRE timeline extends beyond 100 years with current assumptions.")
         else:
             st.warning("Average monthly savings is zero or negative. FIRE timeline cannot be calculated.")
