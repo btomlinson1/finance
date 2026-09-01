@@ -621,18 +621,18 @@ elif st.session_state.current_page == "forecasting":
         st.markdown("### 5-Year Forward Forecast (P&L Statement)")
         
         # Build P&L forecast with categories as rows and months as columns
-        # Include 12 months of ACTUAL data before base_month, then 60 months forward forecast
+        # Include historical data from Jan 2024, then 64 months forward forecast through Dec 2031
         months_list = []
         
-        # Add actual data months (12 months prior, including base_month)
-        current_month = base_month - 11
-        for i in range(12):
+        # Add actual data months (Jan 2024 through base_month)
+        current_month = base_month - 31
+        for i in range(32):
             months_list.append(current_month)
             current_month = current_month + 1
         
-        # Add forecast months (60 months after base_month)
+        # Add forecast months (Sep 2026 through Dec 2031 = 64 months)
         current_month = base_month + 1
-        for i in range(60):
+        for i in range(64):
             months_list.append(current_month)
             current_month = current_month + 1
         
