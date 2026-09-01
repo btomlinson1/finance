@@ -1,39 +1,11 @@
 from __future__ import annotations
 
-import os
-import re
 from datetime import date
 from io import BytesIO
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
-
-
-CATEGORIES = [
-    "Housing",
-    "Restaurants",
-    "Groceries",
-    "Travel",
-    "Shopping",
-    "Entertainment",
-    "Transportation",
-    "Healthcare",
-    "Subscriptions",
-    "Other",
-]
-
-CATEGORY_RULES = {
-    "Housing": r"rent|mortgage|property tax|hoa|apartment|leasing|utilities|electric|water|internet",
-    "Restaurants": r"restaurant|dining|cafe|coffee|starbucks|doordash|grubhub|ubereats|mcdonald|chipotle",
-    "Groceries": r"grocery|grocer|whole foods|trader joe|costco|safeway|kroger|market",
-    "Travel": r"airline|delta|united|american air|southwest|hotel|airbnb|booking|expedia|travel|uber trip",
-    "Shopping": r"amazon|target|walmart|etsy|nordstrom|best buy|retail|shop",
-    "Entertainment": r"netflix|spotify|cinema|theater|movie|concert|ticket|game|hulu|disney",
-    "Transportation": r"uber|lyft|gas|shell|chevron|parking|transit|metro|car wash",
-    "Healthcare": r"pharmacy|cvs|walgreens|doctor|dental|medical|health|hospital|clinic",
-    "Subscriptions": r"subscription|membership|adobe|dropbox|icloud|github|nyt|new york times",
-}
 
 
 def load_transactions(source) -> pd.DataFrame:
@@ -114,19 +86,7 @@ def load_transactions(source) -> pd.DataFrame:
         if recurring_column else False
     )
     result = result.dropna(subset=["date", "amount"])
-    result["category"] = result.apply(
-        lambda row: row["category"] if row["category"] else infer_category(row["name"]),
-        axis=1,
-    )
     return result
-
-
-def infer_category(merchant: str) -> str:
-    merchant_text = merchant.lower()
-    for category, pattern in CATEGORY_RULES.items():
-        if re.search(pattern, merchant_text):
-            return category
-    return "Other"
 
 
 def parse_affordability_question(question: str) -> float | None:
@@ -265,15 +225,6 @@ with st.sidebar:
     show_excluded = st.checkbox("Include excluded rows", value=True)
     show_pending = st.checkbox("Include pending rows", value=True)
     st.caption("Your file is processed in this app session and is not uploaded to a service.")
-    st.divider()
-    st.header("Plaid connection")
-    plaid_environment = os.getenv("PLAID_ENV", "sandbox").lower()
-    plaid_ready = bool(os.getenv("PLAID_CLIENT_ID") and os.getenv("PLAID_SECRET"))
-    if plaid_ready:
-        st.success(f"Configured for Plaid {plaid_environment}")
-    else:
-        st.info("Add PLAID_CLIENT_ID and PLAID_SECRET to enable account linking.")
-    st.caption("Account credentials are entered in Plaid Link, never in this app.")
 
 path_source = Path(local_path).expanduser() if local_path.strip() else None
 source = path_source if path_source and path_source.is_file() else uploaded_file
