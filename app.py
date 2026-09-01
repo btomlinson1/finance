@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date
 from io import BytesIO
 from pathlib import Path
@@ -193,6 +194,28 @@ def year_over_year_comparison(transactions: pd.DataFrame, current_year: int) -> 
         })
     
     return sorted(comparison, key=lambda x: abs(x["pct_change"]), reverse=True)
+
+
+def save_assumptions(assumptions: dict, filename: str = "assumptions.json") -> bool:
+    """Save financial assumptions to a JSON file."""
+    try:
+        with open(filename, "w") as f:
+            json.dump(assumptions, f, indent=2)
+        return True
+    except Exception as e:
+        st.error(f"Failed to save assumptions: {e}")
+        return False
+
+
+def load_assumptions(filename: str = "assumptions.json") -> dict | None:
+    """Load financial assumptions from a JSON file."""
+    try:
+        if Path(filename).exists():
+            with open(filename, "r") as f:
+                return json.load(f)
+    except Exception as e:
+        st.warning(f"Could not load assumptions: {e}")
+    return None
 
 
 st.set_page_config(page_title="Ledger / personal finance", page_icon="$", layout="wide")
@@ -430,12 +453,15 @@ elif st.session_state.current_page == "forecasting":
     st.divider()
     st.markdown("### Financial Assumptions")
     
+    # Load saved assumptions if they exist
+    saved_assumptions = load_assumptions()
+    
     # Input fields for assumptions
     col1, col2, col3 = st.columns(3)
     with col1:
         annual_pretax_income = st.number_input(
             "Annual pre-tax income ($)",
-            value=80000,
+            value=saved_assumptions.get("annual_pretax_income", 80000) if saved_assumptions else 80000,
             step=5000,
             key="annual_income_input"
         )
@@ -443,7 +469,7 @@ elif st.session_state.current_page == "forecasting":
     with col2:
         annual_deductions = st.number_input(
             "Annual deductions ($)",
-            value=8000,
+            value=saved_assumptions.get("annual_deductions", 8000) if saved_assumptions else 8000,
             step=500,
             key="annual_deduction_input"
         )
@@ -453,10 +479,53 @@ elif st.session_state.current_page == "forecasting":
             "Effective tax rate (%)",
             min_value=0.0,
             max_value=50.0,
-            value=25.0,
+            value=(saved_assumptions.get("tax_rate", 25.0) * 100) if saved_assumptions else 25.0,
             step=0.5,
             key="tax_rate_slider"
         ) / 100.0
+    
+    # Save/Load buttons
+    button_col1, button_col2, button_col3 = st.columns(3)
+    with button_col1:
+        if st.button("Save Assumptions", use_container_width=True):
+            # Load existing assumptions to preserve net worth data
+            existing = load_assumptions()
+            if existing is None:
+                existing = {}
+            
+            # Update with financial assumptions
+            existing.update({
+                "annual_pretax_income": annual_pretax_income,
+                "annual_deductions": annual_deductions,
+                "tax_rate": tax_rate,
+            })
+            if save_assumptions(existing):
+                st.success("Assumptions saved!")
+    
+    with button_col2:
+        if st.button("Reset to Defaults", use_container_width=True):
+            # Load existing net worth data to preserve it
+            existing = load_assumptions()
+            assumptions = {
+                "annual_pretax_income": 80000,
+                "annual_deductions": 8000,
+                "tax_rate": 0.25,
+            }
+            # Preserve net worth data if it exists
+            if existing:
+                for key in ["asset_401k", "asset_cash", "asset_ira", "asset_brokerage", "asset_crypto",
+                           "asset_fidelity_go", "asset_fidfolios", "asset_hsa", "asset_fhrp",
+                           "debt_house", "debt_car", "debt_student", "debt_other", "market_growth_rate"]:
+                    if key in existing:
+                        assumptions[key] = existing[key]
+            
+            if save_assumptions(assumptions):
+                st.success("Reset to defaults!")
+                st.rerun()
+    
+    with button_col3:
+        if saved_assumptions:
+            st.info("✓ Assumptions loaded from file")
     
     st.divider()
     st.markdown("### Forecast Base Month")
@@ -624,29 +693,32 @@ elif st.session_state.current_page == "forecasting":
         st.divider()
         st.markdown("### Net Worth & Assets")
         
+        # Load saved net worth data
+        saved_nw = load_assumptions("assumptions.json")
+        
         assets_col, debts_col = st.columns(2)
         
         with assets_col:
             st.markdown("**Assets**")
-            asset_401k = st.number_input("401k ($)", value=0, step=1000, key="asset_401k")
-            asset_cash = st.number_input("Cash/Bank Savings ($)", value=0, step=1000, key="asset_cash")
-            asset_ira = st.number_input("IRA ($)", value=0, step=1000, key="asset_ira")
-            asset_brokerage = st.number_input("Brokerage ($)", value=0, step=1000, key="asset_brokerage")
-            asset_crypto = st.number_input("Crypto ($)", value=0, step=1000, key="asset_crypto")
-            asset_fidelity_go = st.number_input("Fidelity Go ($)", value=0, step=1000, key="asset_fidelity_go")
-            asset_fidfolios = st.number_input("Fidfolios ($)", value=0, step=1000, key="asset_fidfolios")
-            asset_hsa = st.number_input("HSA ($)", value=0, step=1000, key="asset_hsa")
-            asset_fhrp = st.number_input("FHRP ($)", value=0, step=1000, key="asset_fhrp")
+            asset_401k = st.number_input("401k ($)", value=saved_nw.get("asset_401k", 0) if saved_nw else 0, step=1000, key="asset_401k")
+            asset_cash = st.number_input("Cash/Bank Savings ($)", value=saved_nw.get("asset_cash", 0) if saved_nw else 0, step=1000, key="asset_cash")
+            asset_ira = st.number_input("IRA ($)", value=saved_nw.get("asset_ira", 0) if saved_nw else 0, step=1000, key="asset_ira")
+            asset_brokerage = st.number_input("Brokerage ($)", value=saved_nw.get("asset_brokerage", 0) if saved_nw else 0, step=1000, key="asset_brokerage")
+            asset_crypto = st.number_input("Crypto ($)", value=saved_nw.get("asset_crypto", 0) if saved_nw else 0, step=1000, key="asset_crypto")
+            asset_fidelity_go = st.number_input("Fidelity Go ($)", value=saved_nw.get("asset_fidelity_go", 0) if saved_nw else 0, step=1000, key="asset_fidelity_go")
+            asset_fidfolios = st.number_input("Fidfolios ($)", value=saved_nw.get("asset_fidfolios", 0) if saved_nw else 0, step=1000, key="asset_fidfolios")
+            asset_hsa = st.number_input("HSA ($)", value=saved_nw.get("asset_hsa", 0) if saved_nw else 0, step=1000, key="asset_hsa")
+            asset_fhrp = st.number_input("FHRP ($)", value=saved_nw.get("asset_fhrp", 0) if saved_nw else 0, step=1000, key="asset_fhrp")
             
             total_assets = (asset_401k + asset_cash + asset_ira + asset_brokerage + 
                           asset_crypto + asset_fidelity_go + asset_fidfolios + asset_hsa + asset_fhrp)
         
         with debts_col:
             st.markdown("**Debts**")
-            debt_house = st.number_input("House ($)", value=0, step=1000, key="debt_house")
-            debt_car = st.number_input("Car ($)", value=0, step=1000, key="debt_car")
-            debt_student = st.number_input("Student Debt ($)", value=0, step=1000, key="debt_student")
-            debt_other = st.number_input("Other ($)", value=0, step=1000, key="debt_other")
+            debt_house = st.number_input("House ($)", value=saved_nw.get("debt_house", 0) if saved_nw else 0, step=1000, key="debt_house")
+            debt_car = st.number_input("Car ($)", value=saved_nw.get("debt_car", 0) if saved_nw else 0, step=1000, key="debt_car")
+            debt_student = st.number_input("Student Debt ($)", value=saved_nw.get("debt_student", 0) if saved_nw else 0, step=1000, key="debt_student")
+            debt_other = st.number_input("Other ($)", value=saved_nw.get("debt_other", 0) if saved_nw else 0, step=1000, key="debt_other")
             
             total_debts = debt_house + debt_car + debt_student + debt_other
         
@@ -662,10 +734,38 @@ elif st.session_state.current_page == "forecasting":
             "Forecasted annual market growth (%)",
             min_value=0.0,
             max_value=15.0,
-            value=7.0,
+            value=(saved_nw.get("market_growth_rate", 7.0) * 100) if saved_nw else 7.0,
             step=0.5,
             key="market_growth_slider"
         ) / 100.0
+        
+        # Save net worth and asset assumptions
+        if st.button("Save Net Worth & Assets", use_container_width=True):
+            # Load existing assumptions to preserve financial assumptions
+            existing = load_assumptions()
+            if existing is None:
+                existing = {}
+            
+            # Update with net worth and asset data
+            existing.update({
+                "market_growth_rate": market_growth_rate,
+                "asset_401k": asset_401k,
+                "asset_cash": asset_cash,
+                "asset_ira": asset_ira,
+                "asset_brokerage": asset_brokerage,
+                "asset_crypto": asset_crypto,
+                "asset_fidelity_go": asset_fidelity_go,
+                "asset_fidfolios": asset_fidfolios,
+                "asset_hsa": asset_hsa,
+                "asset_fhrp": asset_fhrp,
+                "debt_house": debt_house,
+                "debt_car": debt_car,
+                "debt_student": debt_student,
+                "debt_other": debt_other,
+            })
+            
+            if save_assumptions(existing):
+                st.success("Net worth & assets saved!")
         
         # Project net worth over 5 years
         st.markdown("### Projected Net Worth")
