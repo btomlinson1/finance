@@ -247,10 +247,10 @@ st.caption("A small, local-first view of where your money is going.")
 # Page navigation
 col1, col2 = st.columns(2)
 with col1:
-    if st.button("📊 Dashboard", use_container_width=True, key="btn_dashboard"):
+    if st.button("Dashboard", use_container_width=True, key="btn_dashboard"):
         st.session_state.current_page = "dashboard"
 with col2:
-    if st.button("🚀 Forecasting & FIRE", use_container_width=True, key="btn_forecasting"):
+    if st.button("Forecasting & FIRE", use_container_width=True, key="btn_forecasting"):
         st.session_state.current_page = "forecasting"
 
 st.divider()
