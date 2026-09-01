@@ -526,10 +526,11 @@ elif st.session_state.current_page == "forecasting":
             key="tax_rate_slider"
         ) / 100.0
     
-    # Calculate actual deductions
-    annual_401k_contrib = total_annual_pretax * contribution_401k_pct
-    annual_fidelity_match = total_annual_pretax * fidelity_match_pct
-    annual_other_deductions = total_annual_pretax * other_deductions_pct
+    # Calculate actual deductions (401k, match, and other deductions apply only to salary + bonus, not RSUs)
+    compensation = annual_salary + annual_bonus
+    annual_401k_contrib = compensation * contribution_401k_pct
+    annual_fidelity_match = compensation * fidelity_match_pct
+    annual_other_deductions = compensation * other_deductions_pct
     annual_taxes = (total_annual_pretax - annual_401k_contrib - annual_other_deductions) * tax_rate
     
     annual_pretax_income = total_annual_pretax
